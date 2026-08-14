@@ -20,7 +20,7 @@ env:
   # testing "sam package" and "sam deploy" commands.
   # TESTING_IMAGE_REPOSITORY = '0123456789.dkr.ecr.region.amazonaws.com/repository-name'
   TESTING_REGION: eu-west-1
-  PROD_STACK_NAME: am-app-prod
+  PROD_STACK_NAME: sam-app-prod
   PROD_PIPELINE_EXECUTION_ROLE: arn:aws:iam::437932913013:role/aws-sam-cli-managed-dev-pipel-PipelineExecutionRole-0FnIO9ByivYu
   PROD_CLOUDFORMATION_EXECUTION_ROLE: arn:aws:iam::437932913013:role/aws-sam-cli-managed-dev-p-CloudFormationExecutionRo-RBq0NcyDTNCX
   PROD_ARTIFACTS_BUCKET: aws-sam-cli-managed-dev-pipeline-r-artifactsbucket-06ftz8hcjz1m
@@ -33,6 +33,7 @@ env:
 permissions:
   id-token: write
   contents: read
+
 jobs:
   test:
     if: github.event_name == 'push'
@@ -40,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          # trigger the tests here
+          echo "trigger the tests here"
 
   delete-feature:
     if: startsWith(github.event.ref, 'feature') && github.event_name == 'delete'
@@ -50,6 +51,12 @@ jobs:
       - uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
+
+      - name: Debug OIDC token claims
+        run: |
+          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | jq -r '.value' | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
@@ -83,6 +90,12 @@ jobs:
         with:
           use-installer: true
       - run: sam build --template ${SAM_TEMPLATE} --use-container
+
+      - name: Debug OIDC token claims
+        run: |
+          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | jq -r '.value' | cut -d. -f2 | base64 -d 2>/dev/null | jq .
 
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
@@ -197,7 +210,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          # trigger the integration tests here
+          echo "trigger the integration tests here"
 
   deploy-prod:
     if: github.ref == 'refs/heads/main'
